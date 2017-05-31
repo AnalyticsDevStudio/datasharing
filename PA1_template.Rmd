@@ -1,0 +1,121 @@
+---
+title: 'Reproducible Research: Project 1'
+author: 'Renato Oliveira Fraga'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+
+```{r}
+library(ggplot2)
+library(plyr)
+```
+
+## Loading and preprocessing the data
+
+```{r}
+unzip("repdata_data_activity.zip")
+data <- read.csv("activity.csv")
+```
+
+## What is mean total number of steps taken per day?
+
+```{r}
+SPD <- ddply(data, c("date"),summarise,TS = sum(steps,na.rm=TRUE))
+```                   
+
+```{r ,warning=FALSE}
+
+ggplot(data,aes(x=steps, col=date)) + geom_freqpoly(bins=10) + xlab("Total number of steps") + ylab("Frequency")+ ggtitle("Total Steps per Day")
+
+```
+
+Calculate and report the mean and median of the total number of steps taken per day:
+
+- Mean total number of steps taken per day = `r mean(SPD$TS)` 
+- Median number of steps taken per day = `r median(SPD$TS)`
+
+
+## What is the average daily activity pattern?
+
+```{r}
+SP5m <- ddply(data, c("interval"),summarise, MS = mean(steps,na.rm=TRUE))
+ 
+ggplot(SP5m,aes(x=interval,y=MS)) + geom_line() + ggtitle("Average steps for each 5-min interval") + xlab("Interval") + ylab("Mean steps")
+               
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+- Interval = `r SP5m[which(SP5m$MS==max(SP5m$MS)), "interval"]` 
+- Mean = `r SP5m[which(SP5m$MS==max(SP5m$MS)), "MS"]` steps.  
+
+## Imputing missing values
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs):
+
+The dataset has `r nrow(data)-sum(complete.cases(data))` missing values in the dataset.
+```{r ,warning=FALSE}
+fillData <- aggregate(steps~interval, data=data, FUN=mean)
+fillNA <- numeric()
+for(i in 1:nrow(data)){
+   x <- data[i, ]
+   if (is.na(x$steps)){
+       steps <- subset(fillData, interval==x$interval)$steps
+   } else { 
+       steps <- x$steps
+   }
+   
+   fillNA <- c(fillNA, steps)
+}
+data$steps <- fillNA
+ggplot(data,aes(x=steps, col=date)) + geom_freqpoly(bins=10) + xlab("Total number of steps") + ylab("Frequency")+ ggtitle("Total Steps per Day")
+
+```
+
+```{r}
+SPD2 <- ddply(data, c("date"),summarise,TS2 = sum(steps,na.rm=TRUE))
+```   
+
+Calculate and report the mean and median of the total number of steps taken per day:
+
+- Mean total number of steps taken per day = `r mean(SPD2$TS2)` 
+- Median number of steps taken per day = `r median(SPD2$TS2)`
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{R}
+library(lattice)
+data2 <- read.csv("activity.csv")
+data2$date<- as.Date(data2$date,"%Y-%m-%d")
+day <- weekdays(data2$date)
+
+typeDay <- vector()
+for (j in 1:nrow(data2)) {
+  if (day[i] == "Saturday") {
+    typeDay[j] <- "Weekend"
+  } else if (day[j] == "Sunday") {
+    typeDay[j] <- "Weekend"
+  } else {
+    typeDay[j] <- "Weekday"
+  } 
+  
+}
+data2$typeDay <- typeDay
+data2$typeDay <- factor(data2$typeDay)
+stepsByDay <- aggregate(steps ~ interval + typeDay, data = data2, mean)
+names(stepsByDay) <- c("interval", "typeDay", "steps")
+xyplot(steps ~ interval | typeDay, stepsByDay, type = "l",
+       layout = c(1, 2),
+       xlab = "Interval", ylab = "Number of steps")
+```
+
+According to the results, the activity is higher on the weekends.
+
+
+
+
+
+
